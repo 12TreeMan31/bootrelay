@@ -14,19 +14,12 @@ struct Args {
     port: u16,
 }
 
-fn debug() {
-    let temp = Request {
-        req: Kind::Deregister,
-    };
-    println!("{:?}", temp);
-}
-
 fn main() {
-    debug();
     let args: Args = Args::parse();
-    let server_ip: String = String::from(format!("[::1]:{}", args.port));
+    let server_ip: String = String::from(format!("[::]:{}", args.port));
     println!("Starting server on {}", server_ip);
     let server_socket: UdpSocket = UdpSocket::bind(server_ip).unwrap();
+
     let mut known_clients: HashMap<SocketAddr, ()> = HashMap::new();
 
     let mut buf: Vec<u8> = vec![0; 1024];
