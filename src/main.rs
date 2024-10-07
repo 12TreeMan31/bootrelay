@@ -1,7 +1,6 @@
-use crate::request::{Kind, Request};
+use crate::request::{Kind, Listing, Request};
 use clap::Parser;
-use std::collections::HashMap;
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{Ipv6Addr, SocketAddr, UdpSocket};
 
 mod request;
 
@@ -14,13 +13,29 @@ struct Args {
     port: u16,
 }
 
+fn debug() {
+    let cat: [u8; 4] = [b'M', b'A', b'I', b'C'];
+    let ss = Request {
+        req: Kind::Register,
+        catagory: cat,
+        addr: SocketAddr::new(
+            Ipv6Addr::new(0000, 0000, 0000, 0000, 0000, 0000, 0000, 0000).into(),
+            7777,
+        ),
+    };
+    let json: String = serde_json::to_string(&ss).unwrap();
+    println!("{}", json);
+}
+
 fn main() {
+    debug();
     let args: Args = Args::parse();
     let server_ip: String = String::from(format!("[::]:{}", args.port));
     println!("Starting server on {}", server_ip);
     let server_socket: UdpSocket = UdpSocket::bind(server_ip).unwrap();
 
-    let mut known_clients: HashMap<SocketAddr, ()> = HashMap::new();
+    //let mut known_clients: HashMap<SocketAddr, ()> = HashMap::new();
+    let mut known_clients: Listing = Listing::new();
 
     let mut buf: Vec<u8> = vec![0; 1024];
     loop {
@@ -31,21 +46,20 @@ fn main() {
                 continue;
             }
         };
-        let req: Request = match Request::from_slice(&buf[..bytes]) {
+        let mut req: Request = match Request::from_slice(&buf[..bytes]) {
             Some(x) => x,
             None => continue,
         };
 
-        println!("New connection: {:?}", req);
+        req.addr = addr;
 
         match req.req {
-            Kind::Deregister => req.deregister(&mut known_clients, addr),
+            Kind::Deregister => known_clients.deregister(&req),
+            Kind::Register => known_clients.register(&req),
             Kind::Fetch => {
-                let res: Box<String> = Request::fetch(&mut known_clients);
-                println!("{}", res);
+                let res: Box<String> = known_clients.fetch(req.catagory);
                 server_socket.send_to(res.as_bytes(), addr).unwrap();
             }
-            Kind::Register => req.regester(&mut known_clients, addr),
         }
     }
 }

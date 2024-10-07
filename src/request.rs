@@ -16,8 +16,8 @@ pub enum Kind {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
     pub req: Kind,
-    catagory: [u8; 4],
-    addr: SocketAddr,
+    pub catagory: [u8; 4],
+    pub addr: SocketAddr,
 }
 
 impl Request {
@@ -28,22 +28,9 @@ impl Request {
         });
         return res;
     }
-
-    pub fn regester(&self, listing: &mut HashMap<SocketAddr, ()>, addr: SocketAddr) {
-        listing.insert(addr, ());
-    }
-    pub fn deregister(&self, listing: &mut HashMap<SocketAddr, ()>, addr: SocketAddr) {
-        listing.remove(&addr);
-    }
-    pub fn fetch(listing: &mut HashMap<SocketAddr, ()>) -> Box<String> {
-        let mut st: String = String::new();
-        for (i, _) in listing.iter() {
-            st.push_str(&i.to_string());
-        }
-        return Box::new(st);
-    }
 }
 
+// We use primatives for language compatability
 #[derive(Debug, Serialize, Deserialize)]
 struct PeerInfo {
     time_alive: f64,
@@ -52,8 +39,7 @@ struct PeerInfo {
 }
 
 impl PeerInfo {
-    pub fn new(addr: &SocketAddr, time_alive: Instant) -> Option<Self> {
-        // Converts SocketAddr into an ipv6 addr
+    pub fn new(addr: &SocketAddr, time_alive: &Instant) -> Option<Self> {
         // We don't need to handle ipv4 as Linux converts it to a ipv6 format
         let v6: Ipv6Addr = match addr.ip() {
             IpAddr::V6(a) => a,
@@ -103,7 +89,13 @@ impl Listing {
         }
     }
 
-    /*pub fn fetch(&self) -> Box<String> {
+    pub fn fetch(&self, catagory: [u8; 4]) -> Box<String> {
         let mut json_data: String = String::new();
-    }*/
+        let user_list = self.list.get(&catagory).unwrap();
+        for (addr, alive) in user_list.iter() {
+            let user_entry: PeerInfo = PeerInfo::new(&addr, &alive).unwrap();
+            json_data.push_str(&serde_json::to_string(&user_entry).unwrap());
+        }
+        Box::new(json_data)
+    }
 }
